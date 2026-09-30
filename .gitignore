@@ -35,6 +35,7 @@ settings.json
 /public-script-urls.txt
 /twitch-public-*
 /polish_ui.py
+/polish_*.py
 /update_search_ui.py
 /update_mode_ui.py
 /prepare_release.py

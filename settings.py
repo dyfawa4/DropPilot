@@ -18,6 +18,7 @@ class SettingsFile(TypedDict):
     exclude: set[str]
     priority: list[str]
     cancelled_campaigns: set[str]
+    selected_campaigns: set[str]
     autostart_tray: bool
     connection_quality: int
     tray_notifications: bool
@@ -31,6 +32,7 @@ default_settings: SettingsFile = {
     "priority": [],
     "exclude": set(),
     "cancelled_campaigns": set(),
+    "selected_campaigns": set(),
     "dark_mode": False,
     "autostart_tray": False,
     "connection_quality": 1,
@@ -58,6 +60,7 @@ class Settings:
     exclude: set[str]
     priority: list[str]
     cancelled_campaigns: set[str]
+    selected_campaigns: set[str]
     autostart_tray: bool
     connection_quality: int
     tray_notifications: bool

@@ -652,7 +652,7 @@ class Twitch:
             elif self._state is State.GAMES_UPDATE:
                 # claim drops from expired and active campaigns
                 for campaign in self.inventory:
-                    if not campaign.upcoming and campaign.id not in self.settings.cancelled_campaigns:
+                    if not campaign.upcoming and self.campaign_selected(campaign):
                         for drop in campaign.drops:
                             if drop.can_claim:
                                 await drop.claim()
@@ -681,7 +681,7 @@ class Twitch:
                         game not in self.wanted_games  # isn't already there
                         # and isn't excluded by list or priority mode
                         and game.name not in exclude
-                        and (not priority_only or game.name in priority)
+                        and self.campaign_selected(campaign)
                         # and can be progressed within the next hour
                         and campaign.can_earn_within(next_hour)
                     ):
@@ -998,7 +998,7 @@ class Twitch:
             return False
         for campaign in self.inventory:
             if (
-                campaign.can_earn(channel)  # let the campaign do the "special games" check
+                self.campaign_selected(campaign) and campaign.can_earn(channel)
                 and (
                     # limit watching to the games the user wants
                     channel.game is not None
@@ -1010,6 +1010,10 @@ class Twitch:
             ):
                 return True
         return False
+
+    def campaign_selected(self, campaign):
+        from selection import campaign_selected
+        return campaign_selected(self.settings, campaign)
 
     def should_switch(self, channel: Channel) -> bool:
         """
@@ -1178,6 +1182,8 @@ class Twitch:
                 return
             drop.update_claim(message["data"]["drop_instance_id"])
             campaign = drop.campaign
+            if getattr(self, 'paused', False) or not self.campaign_selected(campaign):
+                return
             await drop.claim()
             drop.display()
             # About 4-20s after claiming the drop, next drop can be started
@@ -1197,7 +1203,7 @@ class Twitch:
                     if drop_data is None or drop_data["dropID"] != drop.id:
                         break
                     await asyncio.sleep(2)
-            if campaign.can_earn(watching_channel):
+            if self.campaign_selected(campaign) and campaign.can_earn(watching_channel):
                 self.restart_watching()
             else:
                 self.change_state(State.INVENTORY_FETCH)
@@ -1212,8 +1218,9 @@ class Twitch:
         else:
             drop_text = "<Unknown>"
         logger.log(CALL, f"Drop update from websocket: {drop_text}")
-        if drop is not None and drop.can_earn(self.watching_channel.get_with_default(None)):
-            # the received payload is for the drop we expected
+        if drop is not None:
+            # Preserve reported progress even for an incidental or cancelled
+            # task, without selecting it or taking over the current overview.
             drop.update_minutes(message["data"]["current_progress_min"])
 
     @task_wrapper
@@ -1536,6 +1543,8 @@ class Twitch:
                 task.cancel()
             await asyncio.gather(*add_campaign_tasks, return_exceptions=True)
             raise
+        if hasattr(self.gui.inv, 'replace_campaigns'):
+            self.gui.inv.replace_campaigns(campaigns)
         self._mnt_triggers.extend(sorted(switch_triggers))
         # trim out all triggers that we're already past
         now = datetime.now(timezone.utc)
@@ -1549,13 +1558,13 @@ class Twitch:
     def get_active_campaign(self, channel: Channel | None = None) -> DropsCampaign | None:
         if not self.wanted_games:
             return None
-        watching_channel = self.watching_channel.get_with_default(channel)
+        watching_channel = channel if channel is not None else self.watching_channel.get_with_default(None)
         if watching_channel is None:
             # if we aren't watching anything, we can't earn any drops
             return None
         campaigns: list[DropsCampaign] = []
         for campaign in self.inventory:
-            if campaign.can_earn(watching_channel):
+            if self.campaign_selected(campaign) and campaign.can_earn(watching_channel):
                 campaigns.append(campaign)
         if campaigns:
             campaigns.sort(key=lambda c: c.remaining_minutes)

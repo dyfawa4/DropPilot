@@ -5,7 +5,7 @@ import logging
 from time import time
 
 from twitch import Twitch
-from constants import State, PriorityMode, GQL_QUERIES, WATCH_INTERVAL
+from constants import State, GQL_QUERIES, WATCH_INTERVAL
 from inventory import DropsCampaign
 from rewards import RewardCampaign, refresh_progress, earned_codes
 from modern_gui import GUIManager, STORE
@@ -35,10 +35,6 @@ class Engine(Twitch):
         game = channel.game
         if game is None or game.name in self.settings.exclude:
             return False
-        if self.settings.priority_mode is PriorityMode.PRIORITY_ONLY:
-            if game.name not in self.settings.priority and not any(
-                    g.is_special() and g.name in self.settings.priority for g in self.wanted_games):
-                return False
         return not self.paused and super().can_watch(channel)
 
     @task_wrapper
@@ -55,12 +51,30 @@ class Engine(Twitch):
         self.change_state(State.INVENTORY_FETCH)
 
     def watch(self, channel, *, update_status=True):
-        if self.paused:
+        if self.paused or not self.can_watch(channel):
             return
         super().watch(channel, update_status=update_status)
         campaign = self.get_active_campaign(channel)
         if campaign and campaign.first_drop:
+            # Once a task has started, priorities only rank it. Removing a
+            # priority must not silently cancel the task after a refresh.
+            if campaign.id not in self.settings.selected_campaigns:
+                self.settings.selected_campaigns.add(campaign.id)
+                self.settings.alter()
+                self.settings.save()
+                self.gui.publish_settings()
             campaign.first_drop.display(countdown=False)
+
+    def update_ordinary_progress(self, channel, data):
+        if not data or not (drop := self._drops.get(data['dropID'])):
+            return
+        drop.update_minutes(data['currentMinutesWatched'])
+        # A response can arrive after cancellation, pause or a channel switch.
+        # Keep Twitch's progress record, but never restore a stopped task's UI.
+        if (not self.paused and self.watching_channel.get_with_default(None) == channel
+                and self.campaign_selected(drop.campaign)
+                and self.get_active_campaign(channel) is drop.campaign):
+            drop.display(countdown=False)
 
     @task_wrapper(critical=True)
     async def _watch_loop(self):
@@ -84,9 +98,7 @@ class Engine(Twitch):
                     response = await self.gql_request(GQL_QUERIES["CurrentDrop"].with_variables(
                         {"channelID": str(channel.id)}))
                     data = response.get("data", {}).get("currentUser", {}).get("dropCurrentSession")
-                    if data and (drop := self._drops.get(data["dropID"])):
-                        drop.update_minutes(data["currentMinutesWatched"])
-                        drop.display(countdown=False)
+                    self.update_ordinary_progress(channel, data)
                 except MinerException as exc:
                     logger.warning("掉宝进度查询失败：%s", exc)
             campaign = self.get_active_campaign(channel)

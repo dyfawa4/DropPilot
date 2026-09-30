@@ -7,27 +7,31 @@
 
 DropPilot finds eligible Twitch streams, tracks the watch time Twitch reports, claims supported regular Drops, and lets you view earned redemption codes. A dark dashboard makes priorities, progress and account status easier to follow.
 
-Version **1.0.0** is an independent derivative of [DevilXD/TwitchDropsMiner](https://github.com/DevilXD/TwitchDropsMiner). It retains the upstream protocol layer and MIT attribution while replacing the desktop interface and adding support for Twitch's newer channel reward campaigns.
+Version **1.01** is an independent derivative of [DevilXD/TwitchDropsMiner](https://github.com/DevilXD/TwitchDropsMiner). It retains the upstream protocol layer and MIT attribution while replacing the desktop interface and adding support for Twitch's newer channel reward campaigns.
 
 - Dark purple dashboard with a matching Windows title bar, system tray and notifications.
 - Regular Drops and pure watch-time `CODE` rewards, including campaigns omitted from the older global campaign list.
 - Separate progress bars for every reward. A 60-minute code becomes available without waiting for a 240-minute reward in the same campaign.
 - Case-insensitive game search, ordered priorities, exclusions and automatic selection modes.
 - Previous/next campaign browsing in the overview. Browsing does not switch the active stream.
-- Explicit **Cancel campaign / Resume campaign** controls. Cancellation is independent of game priority and preserves Twitch's saved progress.
+- Explicit **Start campaign / Cancel campaign / Resume campaign** controls. Unselected activities show Start; unlinked accounts must be connected first. Cancellation preserves Twitch's saved progress.
 - Login, logout, account switching and a local HTTP/HTTPS proxy setting.
 - **20 offline interface languages**, with English selected by default on a fresh installation. Changing language does not interrupt an active campaign. Arabic supports a right-to-left layout.
 
 ## Download and start
 
-1. Download `DropPilot-Windows-1.0.0.zip` from [Releases](https://github.com/dyfawa4/DropPilot/releases).
+1. Download `DropPilot-Windows-1.01.zip` from [Releases](https://github.com/dyfawa4/DropPilot/releases).
 2. Extract it to a writable folder and run `DropPilot.exe` on Windows 10/11, 64-bit. The desktop UI uses Microsoft Edge WebView2 Runtime.
 3. Sign in through Twitch's official device authorization page. You do not enter your Twitch password into DropPilot.
 4. Open **Settings** to select your language and campaign mode. Search for a game such as `minecraft` to add it to your priority list, or choose an automatic mode to browse other eligible campaigns.
 
 The **Campaign inventory** shows activities, their requirements and all reward progress bars. Once Twitch confirms a code reward is earned, use **View code**, then **Copy code**. DropPilot does not redeem rewards on external sites or in games.
 
-Use **Pause** to stop all automatic watching temporarily. Use **Cancel campaign** on the overview, an inventory card or campaign details to stop selecting streams for one activity; **Resume campaign** enables it again. Removing a game from priorities changes selection preferences. In *Priority games only* mode, that game will no longer be selected.
+Use **Pause** to stop all automatic watching temporarily. Use **Cancel campaign** on the overview, an inventory card or campaign details to stop selecting streams for one activity; **Resume campaign** enables it again. Cancellation and priority removal both require confirmation. Removing a priority changes ordering; an already started task continues until you cancel it. **My tasks** keeps started, cancelled and eligible activities with existing progress visible independently of priorities.
+
+In *Selected tasks & priorities* mode, **Start campaign** selects that specific activity without adding its game to priorities. Eligible priority activities are also queued automatically. Automatic modes may select other eligible activities. A campaign record or saved watch time alone does not mean it has been started.
+
+Activities that require binding show a clickable **Link game account** button on cards and in details. This links Twitch to the game's or publisher's account; it is separate from signing into Twitch. Complete the binding in your browser, then return and refresh campaigns. When no valid binding link is available, the button opens Twitch's inventory.
 
 If one stream qualifies for multiple activities, Twitch may still count its viewing time for a cancelled activity while another activity is being watched. Cancellation cannot erase server-side progress.
 
@@ -39,7 +43,7 @@ If one stream qualifies for multiple activities, Twitch may still count its view
 - New code campaigns must require watching only and distribute `CODE` rewards. Subscriptions, gifted subscriptions, Turbo and other paid requirements are not automated.
 - Badge/emote compatibility is optional; zero watch minutes alone never mean a reward has been earned.
 - Displayed progress comes from Twitch. DropPilot does not invent local watch minutes or watch multiple games simultaneously for one account.
-- Code delivery depends on Twitch and the campaign. A completed watch requirement does not guarantee Twitch's code endpoint is currently available. For example, Aurora Cape has returned an unavailable code through both the official inventory and the tool. Another campaign's live code delivery is being verified; see [validation notes](docs/TESTING.md).
+- Code delivery depends on Twitch and the campaign. A completed watch requirement does not guarantee Twitch's code endpoint is currently available. CONTROL Resonant's 60-minute Sierra Suit code has been retrieved successfully in the desktop app. Aurora Cape has returned an unavailable code through both the official inventory and the tool; see [validation notes](docs/TESTING.md).
 - Twitch may delay inventory updates, omit campaigns, or stop counting an ineligible stream. DropPilot periodically checks streams again, and you can refresh manually.
 - This release targets Windows. Linux/macOS packaging and automatic start at Windows login are not provided.
 
@@ -65,7 +69,7 @@ npm test
 env\Scripts\pyinstaller.exe --noconfirm DropPilot.spec
 ```
 
-The executable is written to `dist/DropPilot.exe`. GitHub Actions runs the backend checks, exercises all 20 languages and builds the same modern application. Versions remain `1.0.0`; the workflow does not append a Git revision.
+The executable is written to `dist/DropPilot.exe`. GitHub Actions runs the backend checks, exercises all 20 languages and builds the same modern application. Versions remain `1.01`; the workflow does not append a Git revision.
 
 The core files are `engine.py` (watch lifecycle), `rewards.py` (channel code campaigns), `modern_gui.py` (thread-safe state and command bridge), `modern_main.py` (desktop host) and `web/` (interface). The original Tk interface remains in `gui.py` for reference; the original entry point and build workflow are preserved under `docs/reference/` and are not used in the new build.
 

@@ -62,6 +62,19 @@ class AccountTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.client._restart_reason, "reauth")
         self.assertTrue(self.gui._retry.is_set())
 
+    async def test_logout_clears_account_tasks_but_preserves_priority_preferences(self):
+        settings=self.client.settings
+        settings.selected_campaigns={'account-task'}
+        settings.cancelled_campaigns={'cancelled-task'}
+        settings.alter=Mock()
+        settings.save=Mock()
+        self.gui.publish_settings=Mock()
+        await self.bridge._dispatch('logout',{})
+        self.assertFalse(settings.selected_campaigns)
+        self.assertFalse(settings.cancelled_campaigns)
+        self.assertEqual(settings.priority,['Test game'])
+        settings.save.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

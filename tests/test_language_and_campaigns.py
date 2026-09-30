@@ -38,17 +38,18 @@ class LanguageAndCampaignActions(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.original_language = _.current
         self.settings = SimpleNamespace(language="简体中文", priority=["Same game"], exclude=set(),
-            cancelled_campaigns=set(), priority_mode=PriorityMode.PRIORITY_ONLY,
+            cancelled_campaigns=set(), selected_campaigns=set(), priority_mode=PriorityMode.PRIORITY_ONLY,
             proxy="", tray_notifications=True, enable_badges_emotes=False,
             alter=Mock(), save=Mock())
-        self.campaigns = [SimpleNamespace(id="code"), SimpleNamespace(id="ordinary")]
+        self.campaigns = [SimpleNamespace(id="code", eligible=True, active=True, upcoming=False,
+            drops=[SimpleNamespace(required_minutes=60,is_claimed=False)],game=SimpleNamespace(name="Same game")), SimpleNamespace(id="ordinary", eligible=False)]
         self.client = SimpleNamespace(settings=self.settings, inventory=self.campaigns,
             stop_watching=Mock(), change_state=Mock())
         self.gui = SimpleNamespace(_twitch=self.client, clear_drop=Mock(),
             inv=SimpleNamespace(add_campaign=AsyncMock()))
         self.gui.publish_settings = lambda: GUIManager.publish_settings(self.gui)
         self.store = Store()
-        self.store.update(account="test", phase="watching", active={"minutes": 17})
+        self.store.update(account="test", phase="watching", active={"minutes": 17, "campaign": "code"})
         self.patch = patch.object(modern_gui, "STORE", self.store)
         self.patch.start()
         self.bridge = Bridge()
@@ -89,6 +90,66 @@ class LanguageAndCampaignActions(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await self.bridge._dispatch("campaign_cancel", {"id": "unknown"})
         self.client.stop_watching.assert_not_called()
+
+    async def test_start_selects_only_task_and_clears_cancel_and_exclusion(self):
+        self.settings.priority.clear()
+        self.settings.exclude.add("Same game")
+        self.settings.cancelled_campaigns.add("code")
+        await self.bridge._dispatch("campaign_start", {"id": "code"})
+        self.assertEqual(self.settings.priority, [])
+        self.assertEqual(self.settings.selected_campaigns, {'code'})
+        self.assertFalse(self.settings.exclude)
+        self.assertFalse(self.settings.cancelled_campaigns)
+        self.client.change_state.assert_called_once_with(State.INVENTORY_FETCH)
+
+    async def test_removing_priority_keeps_started_task_and_progress(self):
+        self.settings.selected_campaigns.add('code')
+        self.client.watching_channel=SimpleNamespace(get_with_default=lambda default:SimpleNamespace(game=SimpleNamespace(name='Same game')))
+        await self.bridge._dispatch('priority_remove', {'game':'Same game'})
+        self.assertEqual(self.settings.priority,[])
+        self.assertEqual(self.settings.selected_campaigns,{'code'})
+        self.client.stop_watching.assert_not_called()
+        self.assertEqual(self.store.data['active']['minutes'],17)
+
+    async def test_resume_after_priority_removed_restarts_only_task(self):
+        self.settings.priority.clear()
+        self.settings.cancelled_campaigns.add('code')
+        await self.bridge._dispatch('campaign_resume', {'id':'code'})
+        self.assertEqual(self.settings.selected_campaigns,{'code'})
+        self.assertFalse(self.settings.cancelled_campaigns)
+        self.assertEqual(self.settings.priority,[])
+
+    async def test_start_expired_and_completed_task_does_not_enqueue_it(self):
+        c=self.campaigns[0]
+        c.active=False
+        with self.assertRaises(ValueError):
+            await self.bridge._dispatch('campaign_start',{'id':'code'})
+        c.active=True
+        c.drops[0].is_claimed=True
+        with self.assertRaises(ValueError):
+            await self.bridge._dispatch('campaign_start',{'id':'code'})
+        self.settings.save.assert_not_called()
+        self.assertFalse(self.settings.selected_campaigns)
+
+    async def test_unlinked_start_does_not_modify_tasks(self):
+        with self.assertRaises(ValueError):
+            await self.bridge._dispatch("campaign_start", {"id": "ordinary"})
+        self.settings.save.assert_not_called()
+        self.client.stop_watching.assert_not_called()
+
+    async def test_open_game_link_does_not_modify_task_or_account_state(self):
+        with patch('modern_gui.webbrowser.open') as open_page:
+            await self.bridge._dispatch('open', {'url':'https://example.com/connect'})
+            open_page.assert_called_once_with('https://example.com/connect')
+        self.settings.save.assert_not_called()
+        self.client.stop_watching.assert_not_called()
+        self.assertEqual(self.settings.priority,['Same game'])
+
+    async def test_cancel_unrelated_campaign_does_not_clear_current_progress(self):
+        await self.bridge._dispatch("campaign_cancel", {"id": "ordinary"})
+        self.client.stop_watching.assert_not_called()
+        self.gui.clear_drop.assert_not_called()
+        self.assertEqual(self.store.data["active"]["minutes"],17)
 
     def test_cancelled_campaign_cannot_restart_from_cached_inventory(self):
         campaign = SimpleNamespace(id="code", _twitch=self.client, eligible=True,

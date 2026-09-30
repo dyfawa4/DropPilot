@@ -93,11 +93,18 @@ def serialize_campaign(campaign):
     finished = bool(drops) and all(
         d.is_claimed or (bool(getattr(campaign, "is_reward", False)) and getattr(d, "earned", False))
         for d in drops)
+    settings = getattr(getattr(campaign, "_twitch", None), "settings", None)
+    cancelled = campaign.id in getattr(settings, "cancelled_campaigns", set())
+    from selection import campaign_selected
+    selected = campaign_selected(settings, campaign) if settings is not None else False
+    scheduled = selected and not cancelled and not finished and campaign.eligible and (campaign.active or campaign.upcoming) and any(d.required_minutes > 0 for d in drops)
     return {"id": campaign.id, "name": campaign.name, "game": campaign.game.name,
             "image": image_url(campaign.image_url), "eligible": campaign.eligible,
             "active": campaign.active, "upcoming": campaign.upcoming,
             "finished": finished, "earnable": campaign.can_earn(), "end": campaign.ends_at.isoformat(),
-            "cancelled": campaign.id in getattr(getattr(getattr(campaign, "_twitch", None), "settings", None), "cancelled_campaigns", set()),
+            "cancelled": cancelled, "scheduled": scheduled,
+            "started": campaign.id in getattr(settings, 'selected_campaigns', set()),
+            "requiresLink": not campaign.eligible and not bool(getattr(campaign, "has_badge_or_emote", False)),
             "start": campaign.starts_at.isoformat(),
             "reward": bool(getattr(campaign, "is_reward", False)),
             "link": campaign.link_url,
@@ -145,10 +152,18 @@ class Progress:
 
 class Inventory:
     def clear(self):
-        STORE.update(campaigns={})
+        # Retain the last complete UI inventory throughout a network refresh.
+        self._pending = {}
+
+    def replace_campaigns(self, campaigns):
+        STORE.update(campaigns={c.id: serialize_campaign(c) for c in campaigns})
+        self._pending = None
 
     async def add_campaign(self, campaign):
-        STORE.entry("campaigns", campaign.id, serialize_campaign(campaign))
+        if getattr(self, '_pending', None) is not None:
+            self._pending[campaign.id] = serialize_campaign(campaign)
+        else:
+            STORE.entry("campaigns", campaign.id, serialize_campaign(campaign))
 
     def update_drop(self, drop):
         STORE.entry("campaigns", drop.campaign.id, serialize_campaign(drop.campaign))
@@ -292,7 +307,8 @@ class GUIManager:
                                "notifications": s.tray_notifications,
                                "badges": s.enable_badges_emotes,
                                "language": s.language,
-                               "cancelledCampaigns": sorted(s.cancelled_campaigns)})
+                               "cancelledCampaigns": sorted(s.cancelled_campaigns),
+                               "selectedCampaigns": sorted(getattr(s, 'selected_campaigns', set()))})
         if WINDOW is not None:
             try:
                 from ui_locale import text
@@ -386,7 +402,7 @@ class Bridge:
         if name not in {"pause", "resume", "refresh", "priority_add", "priority_remove",
                         "priority_move", "exclude_add", "exclude_remove", "settings", "switch",
                         "open", "login", "tray", "quit", "clear_logs", "reauth", "logout", "export_logs",
-                        "read_code", "search_games", "campaign_cancel", "campaign_resume"}:
+                        "read_code", "search_games", "campaign_cancel", "campaign_resume", "campaign_start"}:
             return {"ok": False, "error": "未知操作"}
         payload = payload or {}
         if not isinstance(payload, dict):
@@ -431,23 +447,36 @@ class Bridge:
                 gui._retry.set()
             else:
                 client.change_state(State.INVENTORY_FETCH)
-        elif name in {"campaign_cancel", "campaign_resume"}:
+        elif name in {"campaign_cancel", "campaign_resume", "campaign_start"}:
             campaign_id = str(payload.get("id", ""))
             campaign = next((c for c in client.inventory if c.id == campaign_id), None)
             if campaign is None:
                 raise ValueError("活动已变更，请刷新后重试")
+            if name in {"campaign_start", "campaign_resume"}:
+                if not campaign.eligible:
+                    raise ValueError("需关联游戏账户")
+                if not (campaign.active or campaign.upcoming) or not any(
+                        d.required_minutes > 0 and not d.is_claimed and not getattr(d, 'earned', False)
+                        for d in campaign.drops):
+                    raise ValueError("活动已变更，请刷新后重试")
+                settings.exclude.discard(campaign.game.name)
+                settings.selected_campaigns.add(campaign_id)
             if name == "campaign_cancel":
                 settings.cancelled_campaigns.add(campaign_id)
-                # Stop the current heartbeat before scheduling another activity.
-                client.stop_watching()
-                gui.clear_drop()
+                settings.selected_campaigns.discard(campaign_id)
+                # Cancelling an unrelated queued item must not interrupt the
+                # currently selected campaign's heartbeat or progress display.
+                active = STORE.data.get("active") or {}
+                if active.get("campaign") == campaign_id:
+                    client.stop_watching()
+                    gui.clear_drop()
             else:
                 settings.cancelled_campaigns.discard(campaign_id)
             settings.alter()
             settings.save()
             gui.publish_settings()
             await gui.inv.add_campaign(campaign)
-            client.change_state(State.GAMES_UPDATE)
+            client.change_state(State.INVENTORY_FETCH if name in {"campaign_start", "campaign_resume"} else State.GAMES_UPDATE)
         elif name in {"priority_add", "priority_remove", "exclude_add", "exclude_remove"}:
             game = str(payload.get("game", "")).strip()
             if not game or len(game) > 160:
@@ -468,13 +497,12 @@ class Bridge:
                 settings.exclude.discard(game)
             channel = client.watching_channel.get_with_default(None)
             if channel is not None and channel.game is not None and channel.game.name == game:
-                if name == "exclude_add" or (name == "priority_remove"
-                        and settings.priority_mode is PriorityMode.PRIORITY_ONLY):
+                if name == "exclude_add":
                     client.stop_watching()
             settings.alter()
             settings.save()
             gui.publish_settings()
-            client.change_state(State.INVENTORY_FETCH)
+            client.change_state(State.GAMES_UPDATE if name == "priority_remove" else State.INVENTORY_FETCH)
         elif name == "priority_move":
             game = str(payload["game"])
             idx = settings.priority.index(game)
@@ -559,6 +587,12 @@ class Bridge:
             for task in tuple(getattr(client, "_code_tasks", ())):
                 task.cancel()
             client._restart_reason = name
+            if hasattr(settings, 'selected_campaigns'):
+                settings.selected_campaigns.clear()
+                settings.cancelled_campaigns.clear()
+                settings.alter()
+                settings.save()
+                gui.publish_settings()
             client._auth_state.clear()
             if client._session is not None:
                 client._session.cookie_jar.clear()

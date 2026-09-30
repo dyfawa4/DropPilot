@@ -14,6 +14,9 @@ from rewards import RewardCampaign, watch_groups, refresh_progress
 from modern_gui import Store
 from constants import PriorityMode, State
 from utils import Game
+from unittest.mock import AsyncMock, patch
+from exceptions import MinerException
+from rewards import discover
 
 
 class RewardTests(unittest.IsolatedAsyncioTestCase):
@@ -33,6 +36,75 @@ class RewardTests(unittest.IsolatedAsyncioTestCase):
 
     def campaign(self):
         return RewardCampaign(self.client, self.data, self.game, [self.channel])
+
+    async def test_late_code_progress_keeps_record_without_reviving_paused_task(self):
+        campaign=self.campaign()
+        self.client.inventory=[campaign]
+        self.client.paused=False
+        self.client.gui.display_drop=AsyncMock()
+        self.client.gui.tray.notify=AsyncMock()
+        async def delayed_progress(client,channel):
+            self.client.paused=True
+            data=copy.deepcopy(self.data)
+            for group in data['rewardGroups']:
+                group['self']['currentMinutesWatched']=group['progressCriteria']['requirements']['minutesWatched']
+            return [data]
+        with patch('rewards.channel_rewards',side_effect=delayed_progress):
+            await refresh_progress(self.client,self.channel)
+        self.assertTrue(campaign.finished)
+        self.client.gui.display_drop.assert_not_called()
+        self.client.gui.tray.notify.assert_not_called()
+        self.assertNotIn(State.INVENTORY_FETCH,self.events)
+
+    async def test_discovery_failure_preserves_task_but_never_unverified_watch(self):
+        campaign=self.campaign()
+        self.client.inventory=[campaign]
+        self.client.settings.priority=[self.game.name]
+        self.client.settings.priority_mode=PriorityMode.PRIORITY_ONLY
+        self.client.settings.exclude=set()
+        self.client.get_live_streams=AsyncMock(side_effect=MinerException('temporary'))
+        result=await discover(self.client,[campaign])
+        self.assertEqual(result,[campaign])
+        self.assertEqual(campaign.allowed_channels,[])
+        self.assertFalse(campaign.can_earn(self.channel))
+
+    async def test_inventory_discovery_keeps_rewards_outside_priority_list(self):
+        good=SimpleNamespace(id=42,game=self.game,_stream=SimpleNamespace(drops_enabled=False))
+        self.client.inventory=[]
+        self.client.settings.priority=[]
+        self.client.settings.priority_mode=PriorityMode.PRIORITY_ONLY
+        self.client.settings.exclude=set()
+        self.client.get_live_streams=AsyncMock(return_value=[good])
+        with patch('rewards.channel_rewards',return_value=[self.data]):
+            result=await discover(self.client,[],[self.game])
+        self.assertEqual(len(result),1)
+        self.assertEqual(result[0].id,self.data['id'])
+
+    async def test_known_code_campaign_remains_visible_after_priority_removed(self):
+        campaign=self.campaign()
+        self.client.inventory=[campaign]
+        self.client.settings.priority=[]
+        self.client.settings.priority_mode=PriorityMode.PRIORITY_ONLY
+        self.client.settings.exclude=set()
+        self.client.get_live_streams=AsyncMock(side_effect=MinerException('temporary'))
+        old_minutes=campaign.drops.__iter__().__next__().real_current_minutes
+        result=await discover(self.client,[])
+        self.assertEqual(result,[campaign])
+        self.assertEqual(next(iter(result[0].drops)).real_current_minutes,old_minutes)
+
+    async def test_discovery_retries_broader_directory_when_first_streams_do_not_qualify(self):
+        bad=SimpleNamespace(id=99,game=self.game)
+        good=SimpleNamespace(id=42,game=self.game,_stream=SimpleNamespace(drops_enabled=False))
+        self.client.inventory=[]
+        self.client.settings.priority=[self.game.name]
+        self.client.settings.priority_mode=PriorityMode.PRIORITY_ONLY
+        self.client.settings.exclude=set()
+        self.client.get_live_streams=AsyncMock(side_effect=[[bad],[bad,good]])
+        async def query(client,channel): return [self.data] if channel.id==42 else []
+        with patch('rewards.channel_rewards',side_effect=query):
+            result=await discover(self.client,[self.campaign()])
+        self.assertEqual(len(result),1)
+        self.assertEqual(result[0].allowed_channels,[good])
 
     def test_watch_code_needs_no_game_account_link(self):
         campaign = self.campaign()

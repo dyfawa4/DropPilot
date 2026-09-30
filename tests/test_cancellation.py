@@ -62,11 +62,12 @@ class CancellationTests(unittest.IsolatedAsyncioTestCase):
                                            priority_mode=PriorityMode.PRIORITY_ONLY)
         client.paused = False
         client.wanted_games = []
-        channel = SimpleNamespace(game=SimpleNamespace(name="Cancelled game"))
-        with patch.object(Twitch, "can_watch", return_value=True) as upstream:
-            self.assertFalse(client.can_watch(channel))
-            upstream.assert_not_called()
-            client.settings.priority.append("Cancelled game")
-            self.assertTrue(client.can_watch(channel))
-            client.settings.exclude.add("Cancelled game")
-            self.assertFalse(client.can_watch(channel))
+        game=SimpleNamespace(name="Cancelled game",is_special=lambda:False)
+        channel=SimpleNamespace(game=game,online=True,drops_enabled=True)
+        client.inventory=[SimpleNamespace(id='task',game=game,can_earn=lambda channel:True)]
+        client.wanted_games=[game]
+        self.assertFalse(client.can_watch(channel))
+        client.settings.priority.append("Cancelled game")
+        self.assertTrue(client.can_watch(channel))
+        client.settings.exclude.add("Cancelled game")
+        self.assertFalse(client.can_watch(channel))

@@ -3,6 +3,7 @@ import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from modern_gui import serialize_campaign
+from constants import PriorityMode
 
 class InventoryStatusTests(unittest.TestCase):
     def campaign(self, claimed=False, required=0, reward=False, earned=False, empty=False):
@@ -30,3 +31,23 @@ class InventoryStatusTests(unittest.TestCase):
 
     def test_no_rewards_is_not_a_completed_campaign(self):
         self.assertFalse(serialize_campaign(self.campaign(empty=True))["finished"])
+
+    def test_only_eligible_selected_watch_campaigns_are_scheduled(self):
+        c=self.campaign(required=60)
+        settings=SimpleNamespace(priority=[],exclude=set(),cancelled_campaigns=set(),priority_mode=PriorityMode.PRIORITY_ONLY)
+        c._twitch=SimpleNamespace(settings=settings)
+        self.assertFalse(serialize_campaign(c)["scheduled"])
+        settings.priority.append("Test game")
+        self.assertTrue(serialize_campaign(c)["scheduled"])
+        c.eligible=False
+        self.assertFalse(serialize_campaign(c)["scheduled"])
+        c.eligible=True
+        settings.cancelled_campaigns.add("test")
+        self.assertFalse(serialize_campaign(c)["scheduled"])
+        settings.cancelled_campaigns.clear()
+        settings.exclude.add("Test game")
+        self.assertFalse(serialize_campaign(c)["scheduled"])
+        settings.exclude.clear()
+        settings.priority.clear()
+        settings.priority_mode=PriorityMode.ENDING_SOONEST
+        self.assertTrue(serialize_campaign(c)["scheduled"])

@@ -189,6 +189,8 @@ class BaseDrop:
         """
         if self.is_claimed:
             return True
+        if getattr(self._twitch, 'paused', False) or not self._twitch.campaign_selected(self.campaign):
+            return False
         if not self.can_claim:
             return False
         try:
@@ -334,7 +336,9 @@ class TimedDrop(BaseDrop):
             delta = -self.real_current_minutes
         elif self.real_current_minutes + delta > self.required_minutes:
             delta = self.required_minutes - self.real_current_minutes
-        self.campaign._update_real_minutes(delta)
+        # A server update for one reward is not evidence of progress in every
+        # other group. Those groups retain their last confirmed server values.
+        self._update_real_minutes(delta)
 
 
 class DropsCampaign:

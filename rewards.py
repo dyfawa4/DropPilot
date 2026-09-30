@@ -159,6 +159,10 @@ class RewardCampaign(DropsCampaign):
     def bump_minutes(self, channel):
         pass
 
+    def _base_can_earn(self, channel=None, ignore_channel_status=False):
+        # An empty verified channel list must never become an unrestricted ACL.
+        return (channel is None or channel in self.allowed_channels) and super()._base_can_earn(channel, ignore_channel_status)
+
 
 async def channel_rewards(twitch, channel):
     response = await twitch.gql_request(PROGRESS_QUERY.with_variables({"channelID": str(channel.id)}))
@@ -169,6 +173,8 @@ async def discover(twitch, ordinary_campaigns, reward_games=()):
     """Discover rewards even when the old dashboard omits them entirely."""
     known_games = {c.game.name: c.game for c in ordinary_campaigns}
     games = []
+    previous = [c for c in getattr(twitch, "inventory", ())
+                if isinstance(c, RewardCampaign) and c.active]
     for name in twitch.settings.priority:
         if name in twitch.settings.exclude:
             continue
@@ -187,33 +193,46 @@ async def discover(twitch, ordinary_campaigns, reward_games=()):
                 logger.warning("无法查找奖励游戏：%s", name)
         if game is not None:
             games.append(game)
-    # Auto mode also considers available reward games from the global dashboard.
-    if twitch.settings.priority_mode.value != 0:
-        for game in reward_games:
-            if game.name not in twitch.settings.exclude and game not in games:
-                games.append(game)
+    # Discovery populates inventory; selection decides what is watched. These
+    # must not share a filter, or removing a priority erases a started task.
+    for game in list(reward_games) + [c.game for c in previous]:
+        if game not in games:
+            games.append(game)
     found = {}
     async def probe(game):
         try:
             channels = await twitch.get_live_streams(game, limit=3, drops_enabled=True)
             if not channels:
                 channels = await twitch.get_live_streams(game, limit=3, drops_enabled=False)
-            for channel in channels:
-                for data in await channel_rewards(twitch, channel):
-                    if not list(watch_groups(data)) or not data.get("game"):
+            known = [channel for c in previous if c.game == game for channel in c.allowed_channels]
+            checked = set()
+            async def check(candidates):
+                for channel in candidates:
+                    if channel.id in checked:
                         continue
-                    if int(data["game"]["id"]) != game.id:
+                    checked.add(channel.id)
+                    try:
+                        data_list = await channel_rewards(twitch, channel)
+                    except MinerException:
                         continue
-                    now = datetime.now(timezone.utc)
-                    if not timestamp(data["startAt"]) <= now < timestamp(data["endAt"]):
-                        continue
-                    channel.acl_based = True
-                    channel._stream.drops_enabled = True
-                    key = data["id"]
-                    if key in found:
-                        found[key].allowed_channels.append(channel)
-                    else:
-                        found[key] = RewardCampaign(twitch, data, game, [channel])
+                    for data in data_list:
+                        if not list(watch_groups(data)) or not data.get("game"):
+                            continue
+                        if int(data["game"]["id"]) != game.id:
+                            continue
+                        now = datetime.now(timezone.utc)
+                        if not timestamp(data["startAt"]) <= now < timestamp(data["endAt"]):
+                            continue
+                        channel.acl_based = True
+                        channel._stream.drops_enabled = True
+                        key = data["id"]
+                        if key in found:
+                            found[key].allowed_channels.append(channel)
+                        else:
+                            found[key] = RewardCampaign(twitch, data, game, [channel])
+            await check(channels + known)
+            if not any(c.game == game for c in found.values()):
+                await check(await twitch.get_live_streams(game, limit=12, drops_enabled=False))
         except MinerException as exc:
             logger.warning("奖励活动探测失败 (%s): %s", game.name, exc)
     # Bound work and preserve Twitch's existing GQL rate limiter.
@@ -222,6 +241,12 @@ async def discover(twitch, ordinary_campaigns, reward_games=()):
         async with semaphore:
             await probe(game)
     await asyncio.gather(*(bounded(game) for game in games))
+    for campaign in previous:
+        if campaign.game in games and campaign.id not in found:
+            # Keep the user's task visible across a transient discovery failure,
+            # but never continue watching an unverified stream.
+            campaign.allowed_channels = []
+            found[campaign.id] = campaign
     return list(found.values())
 
 
@@ -236,6 +261,15 @@ async def refresh_progress(twitch, channel):
     except MinerException as exc:
         logger.warning("兑换码奖励进度查询失败：%s", exc)
         return True  # Suppress estimated progress even on network errors.
+    # Recheck lifecycle after the network await: the user may have cancelled,
+    # paused or switched channels while the request was in flight.
+    watching = getattr(twitch, 'watching_channel', None)
+    still_watching = not getattr(twitch, 'paused', False) and (
+        watching is None or watching.get_with_default(None) == channel)
+    def selected_campaign(campaign):
+        if hasattr(twitch, 'campaign_selected'):
+            return twitch.campaign_selected(campaign)
+        return campaign.id not in getattr(twitch.settings, 'cancelled_campaigns', set())
     newly_earned = []
     for campaign in campaigns:
         data = data_by_id.get(campaign.id)
@@ -253,7 +287,7 @@ async def refresh_progress(twitch, channel):
             drop.is_claimed = edge.get("status") == "CLAIMED"
             drop.reward_status = edge.get("status") or "IN_PROGRESS"
             drop.update_minutes(edge.get("currentMinutesWatched") or 0)
-            if drop.earned and not was_earned and campaign.id not in getattr(twitch.settings, "cancelled_campaigns", set()):
+            if drop.earned and not was_earned and still_watching and selected_campaign(campaign):
                 newly_earned.append(drop)
             logger.info("奖励真实进度：%s %s/%s 分钟 (%s)", drop.name,
                         drop.real_current_minutes, drop.required_minutes, drop.reward_status)
@@ -261,7 +295,7 @@ async def refresh_progress(twitch, channel):
     # may drive the overview, and cancelled campaigns never take over the view.
     selected = (twitch.get_active_campaign(channel) if hasattr(twitch, "get_active_campaign")
                 else next((c for c in campaigns if c.can_earn(channel)), None))
-    if selected and (next_drop := selected.first_drop) is not None:
+    if still_watching and selected and selected_campaign(selected) and (next_drop := selected.first_drop) is not None:
         next_drop.display(countdown=False)
     for drop in newly_earned:
         twitch.print(f"观看任务已完成：{drop.name}。可在活动库存查看兑换码。")
