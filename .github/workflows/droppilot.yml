@@ -1,0 +1,42 @@
+name: DropPilot checks and Windows build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-modern.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt -r requirements-modern.txt
+          npm ci
+      - name: Check backend and all language packs
+        run: python -m unittest discover -s tests -v
+      - name: Check UI interactions in all 20 languages
+        run: npm test
+      - name: Build DropPilot 1.0.0
+        run: pyinstaller --noconfirm DropPilot.spec
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DropPilot-Windows-1.0.0
+          path: |
+            dist/DropPilot.exe
+            README.md
+            README.zh-CN.md
+            LICENSE
+          if-no-files-found: error

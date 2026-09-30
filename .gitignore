@@ -1,0 +1,46 @@
+# Cache files
+__pycache__
+.mypy_cache
+# Build and dist files
+/build
+/dist
+/*.exe
+/*.zip
+/*.tmp
+/Twitch Drops Miner
+# Dev files
+*.new
+/env
+/cache
+/*.jar
+log.txt
+/dump.dat
+/lock.file
+settings.json
+# AppImage
+/AppDir
+/appimage-builder
+/appimage-build
+/*.AppImage
+/*.AppImage.zsync
+.DS_Store
+*.app
+# DropPilot local sessions and diagnostics
+/webview-data/
+/diagnostics.json
+/live-*.json
+/live_*.py
+/probe_*.py
+/public-*.js
+/public-script-urls.txt
+/twitch-public-*
+/polish_ui.py
+/update_search_ui.py
+/update_mode_ui.py
+/prepare_release.py
+/*日志.txt
+/.pytest_cache/
+
+# Frontend test dependencies
+node_modules/
+.qa-js/

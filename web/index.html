@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src https: data:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+  <title>DropPilot · 掉宝助手</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark" id="brand-icon"></div><div>DropPilot<small>掉宝助手</small></div></div>
+    <div class="nav-caption">工作空间</div>
+    <nav id="navigation"></nav>
+    <div class="sidebar-bottom">
+      <div class="quiet-card"><span class="signal-dot"></span><b id="side-state">正在连接</b><small id="side-note">准备好你的下一份奖励</small></div>
+      <button class="user-card" id="account-button"><span class="avatar">T</span><span><b id="account-name">Twitch 账户</b><small id="account-status">等待连接</small></span><span id="account-chevron"></span></button>
+      <div class="sidebar-footer">本地桌面版 <span>v1.0.0</span></div>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div class="breadcrumb">工作空间 <span>/</span> <b id="breadcrumb">总览</b></div><div class="top-actions"><span class="connection" id="connection"><i></i>正在连接</span><button class="btn secondary small" data-action="tray" title="收起到系统托盘，保持后台获取；点击托盘图标可恢复窗口" id="tray-button"></button></div></header>
+    <main>
+      <div class="page-heading"><div><div class="eyebrow" id="eyebrow">TWITCH DROPS · 自动获取</div><h1 id="page-title">掉宝控制台</h1><p id="page-subtitle">关注你想要的游戏，剩下的交给 DropPilot。</p></div><div class="heading-actions"><button class="btn secondary" data-action="refresh" id="refresh-button"></button><button class="btn primary" id="pause-button"></button></div></div>
+      <div id="page-content"></div>
+    </main>
+    <footer class="statusbar"><span><i></i><span id="status-text">正在初始化…</span></span><span id="updated-at">所有进度均来自 Twitch</span></footer>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <div id="modal-root"></div>
+  <script src="locales.js"></script>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

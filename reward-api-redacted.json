@@ -1,0 +1,249 @@
+{
+  "Inventory": {
+    "completedRewardCampaigns": []
+  },
+  "Campaigns": {
+    "rewardCampaignsAvailableToUser": [
+      {
+        "id": "92f516f7-f6d5-4fa6-909a-48c5b94d2a43",
+        "name": "First Partners Collection",
+        "brand": "Pokemon",
+        "startsAt": "2026-08-24T17:00:00Z",
+        "endsAt": "2026-10-01T07:00:00Z",
+        "status": "UNKNOWN",
+        "summary": "First Partners Collection",
+        "instructions": "",
+        "externalURL": "https://help.twitch.tv/s/article/pokemon-chat-badges",
+        "rewardValueURLParam": "[redacted]",
+        "aboutURL": "https://help.twitch.tv/s/article/pokemon-chat-badges",
+        "isSitewide": true,
+        "game": null,
+        "unlockRequirements": {
+          "subsGoal": 0,
+          "minuteWatchedGoal": 20,
+          "__typename": "QuestRewardUnlockRequirements"
+        },
+        "image": {
+          "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/CAMPAIGN/cf79ef47-7969-443e-b4a9-09e01a87bb77.png",
+          "__typename": "RewardCampaignImageSet"
+        },
+        "rewards": [
+          {
+            "id": "9a604770-9661-11f1-8842-0a58a9feac02",
+            "name": "Poké Ball",
+            "bannerImage": {
+              "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/REWARD/d4245a28-cef5-49dd-b4eb-3e1a7256f2e7.png",
+              "__typename": "RewardCampaignImageSet"
+            },
+            "thumbnailImage": {
+              "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/REWARD/d4245a28-cef5-49dd-b4eb-3e1a7256f2e7.png",
+              "__typename": "RewardCampaignImageSet"
+            },
+            "earnableUntil": "2026-10-01T07:00:00Z",
+            "redemptionInstructions": "",
+            "redemptionURL": "https://help.twitch.tv/s/article/pokemon-chat-badges",
+            "__typename": "Reward"
+          }
+        ],
+        "__typename": "RewardCampaign"
+      },
+      {
+        "id": "9bdb6607-22c2-4317-b18a-1b6924e555d6",
+        "name": "First Partners Collection",
+        "brand": "Pokemon",
+        "startsAt": "2026-08-24T17:00:00Z",
+        "endsAt": "2026-10-01T07:00:00Z",
+        "status": "UNKNOWN",
+        "summary": "First Partners Collection",
+        "instructions": "",
+        "externalURL": "https://help.twitch.tv/s/article/pokemon-chat-badges",
+        "rewardValueURLParam": "[redacted]",
+        "aboutURL": "https://help.twitch.tv/s/article/pokemon-chat-badges",
+        "isSitewide": true,
+        "game": null,
+        "unlockRequirements": {
+          "subsGoal": 2,
+          "minuteWatchedGoal": 0,
+          "__typename": "QuestRewardUnlockRequirements"
+        },
+        "image": {
+          "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/CAMPAIGN/2189930a-d8df-4783-9b8a-e33f70c91701.png",
+          "__typename": "RewardCampaignImageSet"
+        },
+        "rewards": [
+          {
+            "id": "87989657-9661-11f1-9e11-0a58a9feac02",
+            "name": "Great Ball",
+            "bannerImage": {
+              "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/REWARD/3502c136-3f79-4a53-a52c-3c76595b6ec3.png",
+              "__typename": "RewardCampaignImageSet"
+            },
+            "thumbnailImage": {
+              "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/REWARD/3502c136-3f79-4a53-a52c-3c76595b6ec3.png",
+              "__typename": "RewardCampaignImageSet"
+            },
+            "earnableUntil": "2026-10-01T07:00:00Z",
+            "redemptionInstructions": "",
+            "redemptionURL": "https://help.twitch.tv/s/article/pokemon-chat-badges",
+            "__typename": "Reward"
+          }
+        ],
+        "__typename": "RewardCampaign"
+      },
+      {
+        "id": "68e4ae05-4d2e-4244-9b28-d1c881735460",
+        "name": "CONTROL Resonant launch",
+        "brand": "",
+        "startsAt": "2026-09-22T14:00:00Z",
+        "endsAt": "2026-10-13T13:59:59.999Z",
+        "status": "UNKNOWN",
+        "summary": "Celebrate the launch of CONTROL Resonant and earn an exclusive in-game outfit for Dylan Faden by watching. Designed to look like a test dummy, help the FBC’s former test dummy take back CONTROL! #CONTROLResonant",
+        "instructions": "",
+        "externalURL": "https://www.twitch.tv",
+        "rewardValueURLParam": "[redacted]",
+        "aboutURL": "https://www.twitch.tv/drops/campaigns",
+        "isSitewide": false,
+        "game": {
+          "id": "1338428218",
+          "slug": "control-2",
+          "displayName": "CONTROL Resonant",
+          "__typename": "Game"
+        },
+        "unlockRequirements": {
+          "subsGoal": 0,
+          "minuteWatchedGoal": 240,
+          "__typename": "QuestRewardUnlockRequirements"
+        },
+        "image": {
+          "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/CAMPAIGN/d489529e-6ebc-4def-9a2b-02851a9c2a0f.png",
+          "__typename": "RewardCampaignImageSet"
+        },
+        "rewards": [
+          {
+            "id": "d768e395-ad5f-11f1-9163-0a58a9feac02",
+            "name": "Sierra Helmet",
+            "bannerImage": {
+              "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/REWARD/3acd2188-6d1b-4315-a37a-0bdb39d74677.png",
+              "__typename": "RewardCampaignImageSet"
+            },
+            "thumbnailImage": {
+              "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/REWARD/3acd2188-6d1b-4315-a37a-0bdb39d74677.png",
+              "__typename": "RewardCampaignImageSet"
+            },
+            "earnableUntil": "2026-10-13T13:59:59.999Z",
+            "redemptionInstructions": "",
+            "redemptionURL": "https://www.twitch.tv",
+            "__typename": "Reward"
+          }
+        ],
+        "__typename": "RewardCampaign"
+      },
+      {
+        "id": "19f00aac-6679-4e10-b36c-881beb654e52",
+        "name": "First Partners Collection",
+        "brand": "Pokemon",
+        "startsAt": "2026-08-24T17:00:00Z",
+        "endsAt": "2026-11-01T07:00:00Z",
+        "status": "UNKNOWN",
+        "summary": "First Partners Collection",
+        "instructions": "",
+        "externalURL": "https://help.twitch.tv/s/article/pokemon-chat-badges",
+        "rewardValueURLParam": "[redacted]",
+        "aboutURL": "https://help.twitch.tv/s/article/pokemon-chat-badges",
+        "isSitewide": true,
+        "game": null,
+        "unlockRequirements": {
+          "subsGoal": 0,
+          "minuteWatchedGoal": 20,
+          "__typename": "QuestRewardUnlockRequirements"
+        },
+        "image": {
+          "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/CAMPAIGN/21cd725f-557a-4127-ab77-57586a683e3b.png",
+          "__typename": "RewardCampaignImageSet"
+        },
+        "rewards": [
+          {
+            "id": "87989657-9661-11f1-9e11-0a58a9feac02",
+            "name": "Great Ball",
+            "bannerImage": {
+              "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/REWARD/3502c136-3f79-4a53-a52c-3c76595b6ec3.png",
+              "__typename": "RewardCampaignImageSet"
+            },
+            "thumbnailImage": {
+              "image1xURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/REWARD/3502c136-3f79-4a53-a52c-3c76595b6ec3.png",
+              "__typename": "RewardCampaignImageSet"
+            },
+            "earnableUntil": "2026-11-01T07:00:00Z",
+            "redemptionInstructions": "",
+            "redemptionURL": "https://help.twitch.tv/s/article/pokemon-chat-badges",
+            "__typename": "Reward"
+          }
+        ],
+        "__typename": "RewardCampaign"
+      }
+    ]
+  },
+  "Progress": {
+    "data": {
+      "channelDropCampaignsProgress": [
+        {
+          "id": "ef0b8279-7af5-4519-81a1-0233b2226ec5",
+          "name": "Aurora Cape",
+          "brandName": "",
+          "detailsURL": "https://www.minecraft.net/redeem",
+          "startAt": "2026-09-29T07:00:00Z",
+          "endAt": "2026-10-15T06:58:59.999Z",
+          "imageURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/CAMPAIGN/fa9e54b9-e5d5-403c-b84c-60dde9ee29ed.png",
+          "hasViewerDismissedHighlight": false,
+          "isPermanentlyDismissible": false,
+          "game": {
+            "id": "2042681592",
+            "name": "Minecraft Dungeons II",
+            "__typename": "Game"
+          },
+          "rewardGroups": [
+            {
+              "id": "6f236db5-b90f-11f1-993f-0a58a9feac02",
+              "name": "Aurora Cape",
+              "progressCriteria": {
+                "requirementType": "WATCH",
+                "requirements": {
+                  "minutesWatched": 15,
+                  "subs": null,
+                  "turboSubs": null,
+                  "__typename": "DropsUnlockRequirement"
+                },
+                "channels": null,
+                "__typename": "DropsProgressCriteria"
+              },
+              "rewards": [
+                {
+                  "id": "28d62d53-b910-11f1-8bbe-0a58a9feac02",
+                  "name": "Aurora Cape",
+                  "thumbnailURL": "https://static-cdn.jtvnw.net/twitch-quests-assets/REWARD/38ac8db6-ae3f-4206-bce8-df36574df888.png",
+                  "distributionType": "CODE",
+                  "accountLinkURL": "https://www.minecraft.net/redeem",
+                  "isAccountConnected": false,
+                  "__typename": "DropsReward"
+                }
+              ],
+              "self": {
+                "status": "IN_PROGRESS",
+                "currentMinutesWatched": 3,
+                "currentSubs": 0,
+                "__typename": "DropsRewardGroupSelfEdge"
+              },
+              "__typename": "DropsRewardGroup"
+            }
+          ],
+          "__typename": "DropsCampaign"
+        }
+      ]
+    },
+    "extensions": {
+      "durationMilliseconds": 34,
+      "requestID": "01M3RTYP5HR4AMYG9GA37YM4BE",
+      "operationName": "DropChannelCampaignsProgress"
+    }
+  }
+}
